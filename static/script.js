@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Session Management ---
-    let sessionId = sessionStorage.getItem('virraChatSessionId');
+    let sessionId = sessionStorage.getItem('viraaChatSessionId');
     // if (!sessionId) {
     //     // If no session ID, the backend will create one on the first message
     //     console.log("No session ID found in sessionStorage. New session will be created on first message.");
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update session ID if it was newly created or changed
             if (data.session_id && data.session_id !== sessionId) {
                 sessionId = data.session_id;
-                sessionStorage.setItem('virraChatSessionId', sessionId);
+                sessionStorage.setItem('viraaChatSessionId', sessionId);
                 console.log("Updated session ID:", sessionId);
             }
 

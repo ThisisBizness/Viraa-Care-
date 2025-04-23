@@ -21,7 +21,7 @@ class ChatResponse(BaseModel):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Virra Care Chatbot MVP",
+    title="Viraa Care Chatbot MVP",
     description="A simple chatbot using FastAPI and Gemini 2.5 Flash",
     version="0.1.0"
 )
