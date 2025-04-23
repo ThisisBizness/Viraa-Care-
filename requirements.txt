@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+google-generativeai
+python-dotenv
+aiohttp # Explicitly needed by google-generativeai sometimes
+requests # Added for potential future use or robust http handling 
