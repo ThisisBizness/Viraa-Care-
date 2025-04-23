@@ -129,7 +129,7 @@ def start_new_chat(session_id: str):
         logger.error(f"Error initializing model or starting chat for session {session_id}: {e}")
         raise
 
-async def send_message(session_id: str, message: str):
+def send_message(session_id: str, message: str):
     """Sends a message to the chat session and returns the response."""
     if session_id not in active_chats:
         logger.warning(f"Session ID {session_id} not found. Starting new chat.")
@@ -139,8 +139,8 @@ async def send_message(session_id: str, message: str):
 
     try:
         logger.info(f"Sending message to session {session_id}: '{message[:50]}...'")
-        # Use send_message_async for FastAPI's async nature
-        response = await chat_session.send_message_async(message)
+        # Use the SYNCHRONOUS send_message method
+        response = chat_session.send_message(message)
         logger.info(f"Received response for session {session_id}")
 
         # Basic check for blocked response due to safety

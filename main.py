@@ -84,8 +84,8 @@ async def chat_endpoint(chat_request: ChatRequest):
         #     raise HTTPException(status_code=500, detail=f"Could not initialize chat session: {e}")
 
     try:
-        # Get the response from the chat logic
-        bot_response = await send_message(session_id, user_message)
+        # Get the response from the chat logic (no longer needs await)
+        bot_response = send_message(session_id, user_message)
 
         # Return the session ID and the bot's response
         return ChatResponse(session_id=session_id, response=bot_response)
