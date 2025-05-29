@@ -1,8 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const chatBox = document.getElementById('chat-box');
+    // DOM Elements
+    const chatMessages = document.getElementById('chat-messages');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const themeToggle = document.getElementById('theme-toggle');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const charCount = document.getElementById('char-count');
 
     // --- Theme Management ---
     function setTheme(theme) {
@@ -10,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('theme', theme);
     }
 
-    // Check for saved theme preference or respect OS preference
+    // Initialize theme
     const savedTheme = localStorage.getItem('theme');
     const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -22,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme('light');
     }
 
-    // Toggle theme when button is clicked
+    // Theme toggle event
     themeToggle.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         setTheme(currentTheme === 'dark' ? 'light' : 'dark');
@@ -30,103 +33,122 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Session Management ---
     let sessionId = sessionStorage.getItem('viraaChatSessionId');
-    // if (!sessionId) {
-    //     // If no session ID, the backend will create one on the first message
-    //     console.log("No session ID found in sessionStorage. New session will be created on first message.");
-    // }
 
-    // --- Helper Functions ---
-    // Function to detect and format JSON/code blocks in text
-    function formatMessage(text) {
-        // Check for code blocks with ```json or ```
-        const codeBlockRegex = /```(json)?\s*([\s\S]*?)```/g;
-        let formattedText = text;
-        let match;
+    // --- Character Count ---
+    function updateCharCount() {
+        const count = userInput.value.length;
+        charCount.textContent = `${count}/1000`;
         
-        // Replace code blocks with formatted HTML
-        while ((match = codeBlockRegex.exec(text)) !== null) {
-            const language = match[1] || '';
-            let code = match[2].trim();
-            let formattedCode = '';
-            
+        // Enable/disable send button based on content
+        sendButton.disabled = count === 0 || count > 1000;
+    }
+
+    userInput.addEventListener('input', updateCharCount);
+
+    // --- Auto-resize Textarea ---
+    function autoResizeTextarea() {
+        userInput.style.height = 'auto';
+        userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+    }
+
+    userInput.addEventListener('input', autoResizeTextarea);
+
+    // --- Message Formatting ---
+    function formatMessage(text) {
+        let formattedText = text;
+
+        // Escape HTML first to prevent XSS and interference with Markdown
+        formattedText = escapeHTML(formattedText);
+
+        // Handle code blocks with ```language or ```
+        const codeBlockRegex = /```(json|javascript|python|html|css|sql)?\s*([\s\S]*?)```/g;
+        let codeMatches = [];
+        let match;
+        while ((match = codeBlockRegex.exec(formattedText)) !== null) {
+            codeMatches.push({ placeholder: `__CODEBLOCK_${codeMatches.length}__`, content: match[0] });
+        }
+        codeMatches.forEach(m => formattedText = formattedText.replace(m.content, m.placeholder));
+
+        // Handle bold text: **text**
+        formattedText = formattedText.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+
+        // Handle italic text: *text*
+        formattedText = formattedText.replace(/\*([\s\S]+?)\*/g, '<em>$1</em>');
+        
+        // Handle paragraphs (double line breaks)
+        // Replace deliberate double newlines (or more) with paragraph tags
+        // Ensure that lists are not broken by this paragraph logic
+        formattedText = formattedText.split(/\n\s*\n/).map(paragraph => {
+            if (paragraph.trim().startsWith('-') || paragraph.trim().match(/^\d+\./)) {
+                return paragraph; // Don't wrap list blocks in <p>
+            }
+            return paragraph.trim() ? `<p>${paragraph.trim().replace(/\n/g, '<br>')}</p>` : '';
+        }).join('');
+
+        // Handle unordered lists: - item or * item
+        formattedText = formattedText.replace(/^\s*[-*]\s+(.*)/gm, '<ul><li>$1</li></ul>');
+        formattedText = formattedText.replace(/<\/ul>\s*<ul>/g, ''); // Merge adjacent lists
+
+        // Handle ordered lists: 1. item
+        formattedText = formattedText.replace(/^\s*\d+\.\s+(.*)/gm, '<ol><li>$1</li></ol>');
+        formattedText = formattedText.replace(/<\/ol>\s*<ol>/g, ''); // Merge adjacent lists
+        
+        // Restore code blocks
+        codeMatches.forEach(m => {
+            const langMatch = /```(json|javascript|python|html|css|sql)?\s*([\s\S]*?)```/.exec(m.content);
+            const language = langMatch[1] || '';
+            let code = langMatch[2].trim();
+            let formattedCodeContent = '';
+
             if (language.toLowerCase() === 'json') {
                 try {
-                    // Parse the JSON and format it with syntax highlighting
-                    formattedCode = formatJSON(code);
+                    const parsed = JSON.parse(code);
+                    formattedCodeContent = formatJSON(JSON.stringify(parsed, null, 2));
                 } catch (e) {
-                    // If JSON parsing fails, just display as plain code
-                    formattedCode = `<pre>${escapeHTML(code)}</pre>`;
+                    formattedCodeContent = `<pre>${code}</pre>`; // Already escaped
                 }
             } else {
-                // For non-JSON code blocks, just escape HTML entities
-                formattedCode = `<pre>${escapeHTML(code)}</pre>`;
+                formattedCodeContent = `<pre>${code}</pre>`; // Already escaped
             }
             
-            // Create a code block container with language label and copy button
             const codeBlockHTML = `
                 <div class="code-block ${language}">
                     ${language ? `<span class="code-block-label">${language}</span>` : ''}
                     <button class="copy-code-btn" title="Copy code">Copy</button>
-                    ${formattedCode}
+                    ${formattedCodeContent}
                 </div>
             `;
-            
-            formattedText = formattedText.replace(match[0], codeBlockHTML);
-        }
+            formattedText = formattedText.replace(m.placeholder, codeBlockHTML);
+        });
         
-        // Also check for standalone JSON objects that aren't in code blocks
-        // This is a simple heuristic and might need refinement
-        if (!codeBlockRegex.test(text) && text.trim().startsWith('{') && text.trim().endsWith('}')) {
-            try {
-                const jsonObj = JSON.parse(text.trim());
-                // If it's valid JSON, format it
-                formattedText = `
-                    <div class="code-block json">
-                        <span class="code-block-label">json</span>
-                        <button class="copy-code-btn" title="Copy code">Copy</button>
-                        ${formatJSON(JSON.stringify(jsonObj, null, 2))}
-                    </div>
-                `;
-            } catch (e) {
-                // Not valid JSON, leave as is
-                formattedText = text.replace(/\n/g, '<br>');
-            }
-        } else {
-            // Handle normal line breaks for non-code text
-            formattedText = formattedText.replace(/\n/g, '<br>');
+        // Fallback for any remaining single newlines if not part of <p> already
+        // This is tricky because we don't want to add <br> inside <p> if already handled
+        if (!formattedText.includes('<p>') && !formattedText.includes('<ul>') && !formattedText.includes('<ol>') && !formattedText.includes('<div class="code-block"')) {
+             formattedText = formattedText.replace(/\n/g, '<br>');
         }
-        
+
         return formattedText;
     }
-    
-    // Helper function to escape HTML entities
+
     function escapeHTML(text) {
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
-    
-    // Helper function to format JSON with syntax highlighting
+
     function formatJSON(json) {
         if (typeof json === 'string') {
             try {
                 json = JSON.parse(json);
             } catch (e) {
-                // If it's not valid JSON, try to format it as a string
                 return highlightJSONString(json);
             }
         }
         
-        // Convert back to a formatted string
         let formattedJSON = JSON.stringify(json, null, 2);
-        
-        // Apply syntax highlighting
         return highlightJSONString(formattedJSON);
     }
-    
+
     function highlightJSONString(jsonString) {
         return jsonString
             .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
@@ -134,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (/^"/.test(match)) {
                     if (/:$/.test(match)) {
                         cls = 'key';
-                        // Remove the colon from the key
                         match = match.replace(/:$/, '');
                     } else {
                         cls = 'string';
@@ -150,80 +171,120 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/("[^"]*":)/g, '<span class="key">$1</span>');
     }
 
-    function addMessage(sender, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message');
-        messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+    // --- Message Management ---
+    function getCurrentTime() {
+        const now = new Date();
+        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
-        const messageP = document.createElement('p');
-        // Format the message (handle JSON, code blocks, and line breaks)
-        messageP.innerHTML = sender === 'bot' ? formatMessage(text) : text.replace(/\n/g, '<br>');
-
-        messageDiv.appendChild(messageP);
-        chatBox.appendChild(messageDiv);
+    function createMessageHTML(sender, text, time = getCurrentTime()) {
+        const isUser = sender === 'user';
+        const senderName = isUser ? 'You' : 'Sona';
+        const formattedText = isUser ? text.replace(/\n/g, '<br>') : formatMessage(text);
         
-        // Add event listeners to copy buttons if they exist
-        const copyButtons = messageDiv.querySelectorAll('.copy-code-btn');
-        copyButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const codeBlock = this.closest('.code-block');
-                const code = codeBlock.querySelector('pre').textContent;
-                navigator.clipboard.writeText(code).then(() => {
-                    // Show feedback that code was copied
-                    const originalText = this.textContent;
-                    this.textContent = 'Copied!';
-                    setTimeout(() => {
-                        this.textContent = originalText;
-                    }, 2000);
-                });
-            });
+        return `
+            <div class="message-group">
+                <div class="message ${isUser ? 'user-message' : 'bot-message'}">
+                    <div class="message-avatar">
+                        <div class="avatar-circle">
+                            ${isUser ? 
+                                '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' :
+                                '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 3.5C14.5 3.3 14 3.9 14 4.4V5.5C14 6.3 13.3 7 12.5 7H11.5C10.7 7 10 6.3 10 5.5V4.4C10 3.9 9.5 3.3 9 3.5L3 7V9H5V20C5 20.6 5.4 21 6 21H8C8.6 21 9 20.6 9 20V14H15V20C15 20.6 15.4 21 16 21H18C18.6 21 19 20.6 19 20V9H21Z" fill="currentColor"/></svg>'
+                            }
+                        </div>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="sender-name">${senderName}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        <div class="message-text">
+                            <p>${formattedText}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function addMessage(sender, text) {
+        const messageHTML = createMessageHTML(sender, text);
+        chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+        
+        // Add copy button functionality to any new code blocks
+        const newCodeBlocks = chatMessages.querySelectorAll('.message-group:last-child .copy-code-btn');
+        newCodeBlocks.forEach(btn => {
+            btn.addEventListener('click', handleCopyCode);
         });
         
-        // Scroll to the bottom
-        chatBox.scrollTop = chatBox.scrollHeight;
+        scrollToBottom();
     }
 
-    function showLoading(isLoading) {
-        let loadingIndicator = document.getElementById('loading-indicator');
-        if (isLoading) {
-            if (!loadingIndicator) {
-                // Create the container div for the message
-                loadingIndicator = document.createElement('div');
-                loadingIndicator.id = 'loading-indicator';
-                loadingIndicator.classList.add('message', 'loading-indicator'); // Use message class for alignment
-
-                // Create the paragraph element inside
-                const loadingP = document.createElement('p');
-                loadingP.textContent = 'Dr. Reed is thinking...'; 
-                
-                loadingIndicator.appendChild(loadingP);
-                chatBox.appendChild(loadingIndicator);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-            sendButton.disabled = true;
-            userInput.disabled = true;
-        } else {
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
-            sendButton.disabled = false;
-            userInput.disabled = false;
-            userInput.focus(); // Focus back on input after response
-        }
+    function handleCopyCode(event) {
+        const button = event.target;
+        const codeBlock = button.closest('.code-block');
+        const code = codeBlock.querySelector('pre').textContent;
+        
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.style.background = 'var(--color-success)';
+            button.style.color = 'white';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+                button.style.color = '';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy code:', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = code;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        });
     }
 
-    // --- Event Handlers ---
-    async function handleSendMessage() {
-        const messageText = userInput.value.trim();
-        if (!messageText) return;
+    function showTypingIndicator() {
+        typingIndicator.style.display = 'block';
+        scrollToBottom();
+    }
 
-        // Display user message immediately
-        addMessage('user', messageText);
-        userInput.value = ''; // Clear input field
-        userInput.style.height = 'auto'; // Reset height after clearing
-        userInput.style.height = userInput.scrollHeight + 'px'; // Adjust if needed
+    function hideTypingIndicator() {
+        typingIndicator.style.display = 'none';
+    }
 
-        showLoading(true);
+    function scrollToBottom() {
+        requestAnimationFrame(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    }
+
+    // --- Message Sending ---
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message || sendButton.disabled) return;
+
+        // Add user message immediately
+        addMessage('user', message);
+        
+        // Clear input and show typing indicator
+        userInput.value = '';
+        updateCharCount();
+        autoResizeTextarea();
+        showTypingIndicator();
+        
+        // Disable send button
+        sendButton.disabled = true;
 
         try {
             const response = await fetch('/chat', {
@@ -231,60 +292,99 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
-                    session_id: sessionId, // Send current session ID (null if first message)
-                    message: messageText 
-                }),
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    message: message
+                })
             });
 
-            showLoading(false);
-
             if (!response.ok) {
-                // Try to get error message from response body
-                let errorDetail = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorDetail = errorData.detail || errorDetail;
-                } catch (e) {
-                    // Ignore if response is not JSON
-                }
-                addMessage('bot', `Sorry, an error occurred: ${errorDetail}`);
-                console.error('Chat API error:', errorDetail);
-                return;
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
             
-            // Update session ID if it was newly created or changed
+            // Update session ID if we got a new one
             if (data.session_id && data.session_id !== sessionId) {
                 sessionId = data.session_id;
                 sessionStorage.setItem('viraaChatSessionId', sessionId);
-                console.log("Updated session ID:", sessionId);
             }
 
+            // Hide typing indicator and add bot response
+            hideTypingIndicator();
             addMessage('bot', data.response);
 
         } catch (error) {
-            showLoading(false);
-            addMessage('bot', 'Sorry, something went wrong while connecting to the server.');
             console.error('Error sending message:', error);
+            
+            hideTypingIndicator();
+            
+            // Show user-friendly error message
+            const errorMessage = error.message.includes('Failed to fetch') 
+                ? "I'm having trouble connecting right now. Please check your internet connection and try again."
+                : `I apologize, but I encountered an error: ${error.message}. Please try again.`;
+                
+            addMessage('bot', errorMessage);
+        } finally {
+            // Re-enable send button if there's content
+            updateCharCount();
         }
     }
 
-    // --- Auto-resize Textarea ---
-    userInput.addEventListener('input', () => {
-        userInput.style.height = 'auto'; // Reset height
-        userInput.style.height = userInput.scrollHeight + 'px'; // Set to content height
-    });
-
     // --- Event Listeners ---
-    sendButton.addEventListener('click', handleSendMessage);
+    sendButton.addEventListener('click', sendMessage);
 
-    userInput.addEventListener('keypress', (event) => {
-        // Send message on Enter key press (Shift+Enter for newline)
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault(); // Prevent default Enter behavior (newline)
-            handleSendMessage();
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (e.shiftKey) {
+                // Allow new line with Shift+Enter
+                return;
+            } else {
+                e.preventDefault();
+                sendMessage();
+            }
         }
     });
+
+    // Prevent form submission on Enter
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+        }
+    });
+
+    // Focus on input when page loads
+    userInput.focus();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        scrollToBottom();
+    });
+
+    // --- Accessibility Enhancements ---
+    
+    // Add proper ARIA labels
+    chatMessages.setAttribute('aria-live', 'polite');
+    chatMessages.setAttribute('aria-label', 'Chat conversation');
+    
+    // Handle keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        // Alt + T for theme toggle
+        if (e.altKey && e.key === 't') {
+            e.preventDefault();
+            themeToggle.click();
+        }
+        
+        // Escape to focus input
+        if (e.key === 'Escape') {
+            userInput.focus();
+        }
+    });
+
+    // --- Initialize ---
+    updateCharCount();
+    scrollToBottom();
+    
+    console.log('Viraa Care chat interface initialized successfully');
 }); 
