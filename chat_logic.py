@@ -15,54 +15,64 @@ API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not API_KEY:
     logger.error("GOOGLE_API_KEY not found in environment variables.")
-    # You might want to raise an exception or handle this case appropriately
-    # For now, we'll allow it to proceed but genai.configure will likely fail
-    # raise ValueError("GOOGLE_API_KEY not found. Please set it in your .env file.")
+    raise ValueError("GOOGLE_API_KEY not found. Please set it in your .env file.")
 
 try:
     genai.configure(api_key=API_KEY)
 except Exception as e:
     logger.error(f"Failed to configure Google Generative AI: {e}")
-    # Handle configuration error, perhaps exit or return an error state
+    raise RuntimeError(f"Failed to configure Google Generative AI: {e}")
 
 # --- Model Configuration ---
-MODEL_NAME = "gemini-2.5-flash-preview-05-20"
+MODEL_NAME = "gemini-2.5-flash-preview-05-20" # Or your preferred model
 
-# System Prompt defining the chatbot's persona and behavior
+# System Prompt - THIS WILL BE VERY LONG AS IT CONTAINS THE ENTIRE TRANSCRIPT
+# The actual transcript will be inserted by you into this string.
 SYSTEM_PROMPT = """
+You are "Sona," an expert breastfeeding consultant and maternal health specialist. You provide evidence-based, practical advice to new mothers and families navigating their breastfeeding journey.
 
-You are "Sona," a friendly, knowledgeable, and supportive breastfeeding assistant from Virra Care. Your primary goal is to help mothers and expecting parents navigate their breastfeeding journey by providing information strictly based on the Virra Care "Breastfeeding: The First Steps" course material provided below. You are empathetic but also direct and clear. Avoid overly preachy language or excessive commiseration.
+**Core Response Guidelines:**
 
-**Core Instructions:**
+1. **Natural Voice & Tone:**
+   - Speak as a warm, knowledgeable healthcare professional
+   - Use an empathetic, supportive, and reassuring tone
+   - Be conversational yet professional - like talking to a trusted friend
+   - Never reference "courses," "modules," "transcripts," or study materials
 
-1.  **Strict Content Adherence:** Your knowledge is strictly limited to the "COURSE TRANSCRIPT" and the "VIDEO SEGMENT DATA" provided below. You must cross-reference user queries with the "COURSE TRANSCRIPT" to find relevant information. Use the "GENERATED QUESTIONS & TOPICS" section to help you map user queries to the most relevant sections of the transcript and subsequently to the correct video segment from the "VIDEO SEGMENT DATA." If a user asks a question whose answer cannot be confidently found within the "COURSE TRANSCRIPT" and mapped to a video segment, you MUST respond with: "I'm sorry, I can't find information related to that specific query within the course material I have access to. My expertise is focused on the content of the 'Breastfeeding: The First Steps' course." Do NOT attempt to answer from general knowledge or make things up.
-2.  **Conversational & Explanatory Tone:** When you find relevant information in the "COURSE TRANSCRIPT," do not simply copy and paste sentences. Rephrase the information in a conversational, soothing, friendly, and easy-to-understand manner. Explain concepts clearly based on the transcript.
-3.  **Formatting for Readability:** Use simple Markdown to format your responses for better readability. This includes:
-    *   `**bold text**` for emphasis on key terms or important points.
-    *   `*italic text*` for subtle emphasis or definitions.
-    *   Use bullet points (`- List item`) for lists of information.
-    *   Use numbered lists (`1. List item`) for sequential information or steps.
-    *   Ensure paragraphs are well-separated by a blank line in your source response, which will translate to paragraph breaks.
-4.  **Video References:**
-    *   After providing a textual answer derived from the "COURSE TRANSCRIPT," you MUST provide the `gcs_object_path` for the ONE most relevant video segment listed in the "VIDEO SEGMENT DATA." Use the "GENERATED QUESTIONS & TOPICS" to help you identify this most relevant segment. The out should be like this eg " gcs_object_path: 'BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_EaseOfDigestion_Seg18a.mp4' "
-    *   **One Video Per Topic Instance:** If a user asks a question, and you provide a video, and then they ask a *similar* question or a *follow-up* that can be answered by referencing the *same section of the "COURSE TRANSCRIPT"* and thus the *same video you just shared*, DO NOT send the `gcs_object_path` again. Instead, refer to the video you already sent. For example: "As the video I shared earlier explained..." or "Referring back to the points from the video on [topic]..."
-    *   **No Video for Very Short Answers:** If the user's question is very short, can be answered in one or two concise sentences directly from a small piece of the "COURSE TRANSCRIPT," and there's nothing significant to elaborate on, provide the short textual answer ONLY and DO NOT provide a `gcs_object_path`.
-5.  **Initial Information Gathering:**
-    *   At the VERY BEGINNING of a new conversation with a user, you MUST gather the following information politely: User's Name, Child's Name (if applicable), Child's Age (e.g., weeks, months), Child's Gender (optional).
-    *   Example opening: "Welcome to Virra Care support! I'm Sona, your breastfeeding assistant. To help me provide the best guidance from our course, could you please share your name, your little one's name, and their current age?"
-6.  **Query Clarification (Brief):**
-    *   After gathering initial information, when the user asks their first main query, you can ask one or two brief clarifying questions ONLY IF NEEDED to help you locate the relevant information within the "COURSE TRANSCRIPT" and map it to the "GENERATED QUESTIONS & TOPICS." Do not engage in lengthy interrogation.
-7.  **No Unsolicited Advice:** Only provide information directly related to the user's query and found within the "COURSE TRANSCRIPT."
-8.  **Language:** Respond in English.
+2. **Response Structure:**
+   - Start with a brief, reassuring opening
+   - Organize information in clear, logical sections using headings
+   - Use bullet points and numbered lists for easy reading
+   - End with practical next steps or encouragement
 
-**SECTION 1: FULL COURSE TRANSCRIPT**
+3. **Content Style:**
+   - Be specific and actionable - give clear steps mothers can follow
+   - Use simple, clear language that any new mother can understand
+   - Include practical tips and real-world examples
+   - Focus on what mothers need to know and do right now
 
+4. **Formatting:**
+   - Use `**bold text**` for key terms and important points
+   - Use `*italic text*` for gentle emphasis
+   - Structure with clear headings using `##` and `###`
+   - Use bullet points (`-`) and numbered lists (`1.`) for clarity
+   - Keep paragraphs short and scannable
 
-[
+5. **Professional Approach:**
+   - Base all advice on evidence-based practices
+   - Be encouraging while being realistic about challenges
+   - Always recommend professional help when needed
+   - Never make mothers feel guilty about their feeding choices
+
+** NOTE: All answers needs to be under 250 words.** 
+
+**Knowledge Base:**
+
+(...)
 
 Welcome to breastfeeding the first steps.(...) This comprehensive course is designed for parents and for expecting parents to prepare you for your breastfeeding journey. Whether the journey has already started or is expected to start post delivery. We hope this course provides you with new information, guides you, answers your questions and empowers you to go through the journey of breastfeeding or bottle feeding and be there with your baby through their growing years. Hi, my name is Sonal. I am a mother and a professional in the field of infant and pediatric feeding. So I am living it. Treating issues related to breastfeeding and infant and pediatric feeding every day.
 
-
+(...)
 
 The beauty of this combination is that you will hear information in this course coming all from my heart with all the emotion for my own children and also coming with evidence based background based from my professional experience.
 
@@ -106,7 +116,7 @@ As part of Module 1, the critical period of birth, we will cover essential infor
 
 Regardless of the method of childbirth, vaginal or caesarean, the mother is likely to be occupied and tired. Therefore, fathers and other caretakers and family play a crucial role in being aware of the necessary actions and information discussed in this module.(...) As mother may not be in the optimal state to remember everything, the fathers and the families can come up with these points and make sure that they are nicely performed.
 
-(...)
+    
 
 Let's get started with our first module.
 
@@ -834,759 +844,96 @@ Breastfeeding is not meant to be painful. Please seek out professional help if i
 
 We thank you so much for being part of our course. Hope all of this information was useful for you, especially around the first hour, cold, strong skin to skin and more. Please keep these takeaways with you. And we look forward to having you in our live session, where we will do the workshop with our basics in positioning, basic and different latch positions. So please do come into the live workshop with a small pillow, which you can use as a dummy. Thank you so much for joining us. We stay in touch and you can follow us for more of our courses.
 
-]
-
-**SECTION 2: GENERATED QUESTIONS **
-[
-    
-    General Course & Introduction Questions:
-What is this breastfeeding course about?
-Who is this breastfeeding course designed for?
-Is this course only for mothers who are currently breastfeeding?
-Can expecting parents benefit from this course?
-What does this course hope to achieve for parents?
-Will this course cover bottle feeding?
-Who is Sonal, the instructor of this course?
-What is Sonal's background in infant and pediatric feeding?
-Does Sonal have personal experience with breastfeeding?
-What kind of information will be shared in this course?
-Is the information in this course evidence-based?
-What is the main goal of this breastfeeding course?
-What practical advice can I expect from this course?
-How will this course help me during the initial months of breastfeeding?
-Why is it highly encouraged for fathers to join this course?
-How can fathers benefit from taking this breastfeeding course?
-What role can fathers play if they have knowledge from this course?
-How can fathers support new mothers using information from this course?
-Will there be a live workshop after completing this course?
-What topics will be covered in the live workshop?
-What will the live workshop on latch techniques involve?
-How will I receive an invite for the live session?
-What should I do if I have questions from the course?
-How many modules are in this course?
-Can you give an overview of the course modules?
-What are the key takeaways I should remember from this course?
-Why is upfront communication with family/hospital important regarding breastfeeding wishes?
-What should I communicate to my hospital/family about my breastfeeding plans?
-II. Understanding Breastfeeding & Its Importance:
-What is breastfeeding?
-How is breastfeeding described in the course? (Nature's way, incredible, miraculous)
-Why is breastfeeding considered a miraculous ability for women?
-What challenges can arise during childbirth that might affect breastfeeding initiation?
-What happens if there are delays in starting breastfeeding?
-Can delays in breastfeeding lead to formula feeding?
-How does this course aim to prevent unnecessary formula feeding?
-What knowledge does this course provide to help start breastfeeding correctly?
-Why is it important for new parents to have information about breastfeeding from the beginning?
-How can initial breastfeeding knowledge impact a parent's journey emotionally and physically?
-What does the course say about the "beauty" of Sonal's combined personal and professional experience?
-III. The Critical Period of Birth & First Hour:
-What is the "critical period of birth"?
-What happens during the critical period of birth for the baby?
-How does a baby transition from the womb to the outside world?
-Why do newborns instinctively want their mother upon birth?
-What is the "natural habitat" for a baby?
-What analogy is used to describe a baby's need for its mother after birth (swimming pool)?
-Why is the mother considered the "surface" for the baby after birth?
-What should be done if there's a separation between mother and baby after birth (e.g., C-section, medical care)?
-How soon should mother and baby be reunited after separation?
-What is the "first hour after birth"?
-What is the significance of the first hour post-delivery?
-What is another name for the first hour after birth? (Golden Hour)
-Why is the golden hour considered a critical period?
-How is the first hour unique compared to other breastfeeding times?
-What does the quote about "innate neuro-behavior" during a unique period mean?
-What non-baby example is used to explain innate neuro-behavior (finding a partner)?
-How does the concept of innate neuro-behavior apply to the first hour of a baby's life?
-What is a baby's innate neuroreaction during the first hour?
-What happens when mother and baby are together in the first hour post-delivery regarding innate behaviors?
-If the first hour is missed, what should parents do?
-Can the "first hour activities" be performed later if the actual first hour is missed?
-How should one approach breastfeeding if they get to be with their baby only after a few hours?
-IV. Newborn Needs & Capabilities:
-What are the basic biological needs of a newborn? (Oxygenation, nutrition, warmth, protection)
-Why do newborns need to learn how to breathe?
-Why is maintaining body temperature important for newborns?
-How can a newborn's fundamental needs be met?
-What common assumption do adults make about newborns' knowledge?
-What are the capabilities of a newborn that parents should know?
-How do babies recognize their mother? (Smell, voice, touch)
-Do babies have an inherent knowledge of suckling?
-Can babies initiate suckling and drinking from the breast themselves if given a chance?
-What actions do babies already know regarding feeding? (Suck, rhythm, swallow)
-What might have been observed in ultrasounds regarding baby suckling?
-What kind of environment is needed for a baby to initiate breastfeeding and leverage their capabilities? (Calm, relaxed, quiet)
-How can we leverage a newborn's capabilities for breastfeeding?
-V. Breast Milk & Colostrum:
-What is the first milk produced by the mother's body called? (Colostrum)
-Why is information about colostrum important for fathers and family?
-What should be done if the mother is separated from the baby but colostrum has come?
-When does colostrum usually appear?
-Why is it important to give the first milk (colostrum) to the baby?
-What are the benefits of colostrum?
-Is colostrum nutrient-rich? What does it contain? (Probiotics, proteins, vitamins, minerals)
-Is colostrum rich in antibodies and immune factors?
-What are immunoglobulins and why are they important for babies?
-How does colostrum benefit a newborn's gut?
-Is colostrum laxative in nature? What does this help with?
-How does giving colostrum contribute to bonding and comfort?
-What is the ideal way to give colostrum to the baby?
-What if the baby cannot come to the mother in the first hour for colostrum?
-What should be communicated to hospital staff regarding colostrum if mother and baby are separated?
-Are the benefits of colostrum limited to the first milk only?
-What is considered the "most perfect nutrient balance" for babies?
-How is breast milk tailored to a newborn's nutritional needs? (Proteins, fats, carbohydrates)
-How does breast milk support a baby's immune system?
-What immune-boosting components are in breast milk?
-What fatty acids important for brain development are found in breast milk? (Omega-3, Omega-6)
-Why is the Omega-3 and Omega-6 balance in breast milk significant?
-Why should one continue offering breast milk even if formula is also given?
-How does breast milk compare to formula in terms of ease of digestion?
-Are gastric problems common in formula-fed babies?
-How does breast milk help in "micro building" or good bacteria building?
-How can the microbiome built by breast milk help the baby later in life? (Reduce allergies/sensitivities)
-Why are the efforts put into breastfeeding "so worth it"?
-How is breast milk formed in the mother's body?
-Is breast milk formed in the mother's stomach?
-What is breast milk made out of? (Mother's blood)
-How does the mother's diet affect breast milk if it's made from blood?
-VI. Formula Feeding:
-What is formula milk?
-Is formula feeding bad?
-How does formula milk compare to breast milk? (Benchmark, gold standard)
-Is formula the next safe option if breastfeeding isn't possible?
-Can medical or lifestyle decisions lead to choosing formula?
-What misconception might arise about breast milk not being enough when formula is discussed?
-Why might people think breast milk isn't enough? (Can't see the amount)
-Should concerns about breast milk supply be addressed by a professional?
-Is formula "above" breast milk?
-Is formula heavy for a baby?
-Why can some formula compositions be heavy for babies?
-What should be done if a baby seems to have trouble with a particular formula?
-Who should be consulted about choosing or changing formula?
-Can I do combination feeding (breast milk and formula)?
-Is combination feeding viable?
-What questions might arise with combination feeding (e.g., what to give first)?
-Who should be consulted for advice on combination feeding?
-What tip is given for mothers doing combination feeding regarding morning and night breast milk?
-Why is morning breast milk particularly good? (High in fat)
-How does breast milk change at night? (Becomes drowsier)
-VII. Establishing Mother-Baby Bond & Skin-to-Skin:
-What is the importance of establishing the mother and baby bond?
-What does the statement about "dynamic, bidirectional biological dialogue" during suckling mean?
-What exchanges take place during breastfeeding beyond nutrition? (Physical, biochemical, hormonal, sociological)
-What analogy is used for nourishing the mother? (Watering the roots of a plant)
-Why is it important to nourish the mother for the baby's well-being?
-What does a baby need most at the moment of birth?
-When does breastfeeding typically begin?
-What should be prioritized if immediate breastfeeding is not possible?
-How does skin-to-skin contact help initiate breastfeeding?
-What are the benefits of skin-to-skin contact? (Regulates baby's temperature, heart rate, breathing, promotes bonding)
-What should you do if you face challenges with breastfeeding?
-Who can provide assistance with breastfeeding difficulties?
-How should mother and baby be brought together to initiate breastfeeding? (Skin-to-skin)
-How is skin-to-skin performed? (Baby in diaper on mother's bare chest)
-Can the mother and baby be covered during skin-to-skin?
-How can you check if you are in the correct skin-to-skin position? (Able to kiss baby's head)
-How frequently should skin-to-skin be done? Is it like a medicine?
-Is skin-to-skin beneficial in case of a C-section? What precautions are needed?
-When are ideal moments for skin-to-skin? (During naps, contact napping)
-How can skin-to-skin before waking up facilitate breastfeeding?
-What should be remembered if there's a distance between mother and baby (swimming pool example)?
-How does skin-to-skin help fulfill a baby's four biological needs? (Oxygenation, nutrition, warmth, protection)
-How can family members support a healthy mother-baby connection?
-Why should frequent holding and skin-to-skin be encouraged?
-Does holding a baby too much "spoil" them or get them "used to it"?
-Why is it important to acknowledge the mother as the "natural habitat" for the baby?
-What kind of environment should families provide for a new mother? (Positive, calm, happy, nourishing)
-How does understanding breastfeeding as a natural process help?
-What does the "mother is like a chocolate factory" analogy mean?
-What is breast crawl?
-What statement is read before showing the breast crawl video about Western culture's perception of infant competence?
-What does the statement about newborns being "incompetent" mean, and how does the course counter it?
-What inherent competencies do babies possess that are often overlooked?
-How does recognizing babies as mere recipients of care disempower them?
-What should be our role as parents/caregivers instead of just "doing things for them"? (Facilitate)
-What was observed in the breast crawl video? (Baby moving, lifting head, finding breast)
-How long were the mother and baby together before the breast crawl in the video example?
-What competencies does the baby demonstrate during breast crawl?
-What are the recommended steps if you want to latch your baby straight away instead of waiting for breast crawl? (Bring together, alone time, calm atmosphere, skin-to-skin)
-VIII. Practical Aspects of Latching & Positioning:
-What are the first steps when ready to start breastfeeding (Module 3 focus)?
-Should you wipe or clean your breasts before the first latch? Why or why not?
-What do Montgomery glands secrete, and why is it important for the baby?
-Should you take a shower right before the first latch?
-Do you need to clean your breasts before every breastfeeding session?
-What is vernix?
-Should vernix be kept on the baby? Why?
-How does vernix help the baby find the breast (smell similar to amniotic fluid and Montgomery glands)?
-What analogy is used for the baby finding food by fragrance (coming home from school)?
-What is considered a prerequisite or mandate before breastfeeding? (Skin-to-skin)
-What should a new mother do to prepare for a good latch regarding her own body?
-Why is it important to familiarize yourself with changes in your breasts?
-How can knowing your breast shape help in supporting them during breastfeeding?
-What is a "C-hold" for supporting breasts? When is it used?
-What is a "U-hold" for supporting breasts? When is it used?
-What does "fingers off the dinner plate" mean when holding the breast?
-Why is it important not to cover the nipple area with fingers when supporting the breast?
-Does a baby need a "breathing hole" when latched correctly?
-What are the visual cues for a good latch?
-What is an "asymmetrical latch"? Why is it important?
-Should the latch be perfectly symmetrical?
-How does a baby typically latch with an asymmetrical latch (from lower part up)?
-What should be the angle of the baby's lips for a good latch? (Wide gap, 140-160 degrees)
-What are "flanged lips"? Should they be in or out?
-How can you tell if there's effective milk removal? (Rhythmic sip/swallow, calm baby, lighter breast)
-What does an incorrect symmetrical latch look like in the provided image example?
-What are the signs of an incorrect latch from the baby's lips and facial expression in the image?
-What does a correct asymmetrical latch look like in the provided image example?
-How does an asymmetrical latch help with forming a vacuum and suck/swallow rhythm?
-How does an asymmetrical latch prevent pain for the mother?
-What happens if the baby only attaches to the top part of the nipple? (Pain, less milk, poor vacuum)
-How does a breast nipple look in a baby's mouth at rest versus a bottle nipple?
-Why does the breast nipple go deeper in the baby's mouth?
-Why is it important for the baby to connect with the entire areola, not just the nipple tip?
-What is the course's stance on bottle marketing claims (e.g., "no nipple confusion," "close to breast")?
-Can the choice of bottle truly replicate the internal interaction of a breast nipple?
-What can be managed when bottle feeding, similar to breastfeeding? (Wide open mouth, asymmetrical latch attempt, flanged lips)
-What is the fundamental proper positioning hack for any latch position? (Supporting baby's neck, nape, spine)
-Why does the baby's neck and spine area need support?
-How should the mother's fingers be positioned to support the baby's neck and spine?
-What is the "sniffing position" in breastfeeding?
-Why is the sniffing position important? (Leveraging baby's smell recognition)
-How do you bring the baby into a sniffing position? (Nipple near baby's nose)
-What does the baby typically do when in the sniffing position and ready to latch? (Opens mouth wide)
-How does the asymmetrical latch allow for optimal milk flow and vacuum?
-How does an asymmetrical latch prevent nipple creasing and pain for the mother?
-What are the different latch positions mentioned? (Mother-led, football/clutch, cross-cradle, cradle, side-lying, infant-led)
-Will all latch positions be covered in detail in the online course? (No, in the live workshop)
-What should participants bring to the live workshop for practicing latch positions? (Cylindrical pillow)
-IX. Signs of Poor Latch & When to Seek Help:
-How do you know if the latch is not good enough?
-Should breastfeeding be painful? What if it is?
-What does "don't normalize pain with breastfeeding" mean?
-What are post-delivery contractions, and are they related to latch pain?
-How can you tell if the baby is not receiving optimal volumes of milk?
-What does a "snacky" baby indicate?
-How will the mother's breasts feel if the milk transfer isn't optimal? (Not drained, heavy, distorted feeling)
-What can an incorrect latch lead to over time? (Decreased supply, plugged ducts)
-What are the visual signs of a poor latch to remember from the image shown earlier? (Symmetrical, frown, lips inside, small angle)
-When should professional help be sought for latch issues?
-What common problems with latch can be corrected at home?
-What can you do if the baby's lip seal isn't proper? (Use finger to flange lip)
-What if the baby's sucking is shallow, not rhythmic, or they are coughing/choking?
-What are the three things to do if sucking seems disorganized? (Unlatch, relatch with C/U hold, mother breathes/relaxes)
-Why is the mother's breathing important during breastfeeding?
-How can a sleepy baby or mother affect the latch?
-What if medication is interfering with breastfeeding?
-How can overstimulation affect breastfeeding? What is the family's role here?
-X. Understanding Baby's Feeding Cues:
-When does breastfeeding usually start after birth (in terms of baby's readiness)?
-Is a baby's desire to be with the mother already present even if separated after birth?
-What are feeding cues?
-Why is understanding feeding cues important?
-What is the first feeding cue mentioned? (Rapid eye movement - REM)
-What does rapid eye movement in a baby signify?
-What analogy is used for REM (looking for mother after coming home from school)?
-What should you do when you notice rapid eye movement? (Bring skin-to-skin)
-What is the second feeding cue? (Quiet and alert time)
-What does a baby do during quiet and alert time? (Wide open eyes, looking around)
-Is crying involved in the first two feeding cues?
-What is the third feeding cue involving activity? (Rooting)
-What does rooting look like? (Going towards arm/fist)
-What is the fourth and last feeding cue? (Crying/shouting)
-Why might latch become difficult if you wait until the baby is crying?
-XI. Bottle Feeding Techniques:
-What types of milk can be used for bottle feeding? (Pumped breast milk, formula)
-What is "paced bottle feeding"?
-What is the recommended position for the baby during bottle feeding? (Comfortable, supported neck/spine)
-Should human contact and affection be maintained during bottle feeding?
-What type of bottle nipple base is recommended? (Wide base)
-What is the desired latch on a bottle? (Asymmetrical attempt, flanged lips, wide open angle)
-What is the incorrect angle for holding a bottle during feeding (too vertical)? Why is it bad? (Heavy flow)
-What is the correct angle for paced bottle feeding (more horizontal)?
-How do you compensate for the bottle angle change in paced bottle feeding? (Slightly lift baby)
-In paced bottle feeding, should the entire nipple be filled with milk? (No, just the tip)
-Why is it important for the baby to use their sucking power during bottle feeding?
-How does holding the bottle too vertically reduce the baby's need to suck?
-XII. Breastfeeding Myths Busted:
-Myth 1: It's usual for breastfeeding to hurt / Sore nipples are inevitable.
-Why is this incorrect? How can sore nipples be prevented?
-Myth 2: You should wash your nipples before breastfeeding.
-Why is this not necessary? What do nipples naturally produce?
-Myth 3: You should separate a newborn and mother to let the mother rest.
-Why is this wrong? What is Kangaroo Mother Care / skin-to-skin promoted for?
-How does being close to the baby help the mother heal?
-Myth 4: You won't be able to breastfeed unless you do it straight away.
-Why can this myth cause stress? Is breastfeeding an instant skill?
-Can successful breastfeeding be achieved later if not started immediately?
-Does having a C-section mean you can't breastfeed successfully?
-Myth 5: Many mothers can't produce enough milk.
-Is this generally true? What factors influence breast milk production? (Latch, frequency, effective removal)
-What is the "demand and supply" concept in breastfeeding?
-What kind of support is important for milk production?
-Myth 6: You can never use formula if you want to breastfeed.
-Is it possible to supplement with formula and still breastfeed?
-Can you switch between breastfeeding and formula feeding?
-Myth 7: It's hard to wean a baby if you breastfeed them for more than a year.
-Is there evidence for this? What does research support regarding breastfeeding duration?
-Who should decide the duration of breastfeeding?
-Myth 8: You should only eat plain food or bland food while breastfeeding.
-Is this true? What kind of diet should breastfeeding mothers have?
-Are babies already exposed to mother's food choices in the womb?
-When should a mother seek professional help regarding her diet and baby's reactions?
-Why is it important not to make a new mother's life restrictive with diet?
-XIII. Mother's Nutrition & Self-Care:
-What kind of diet should a new mother follow? (Nutritious, balanced)
-Will a new mother's hunger drive increase? Should she follow these hunger cues?
-How many extra calories does a new mother need on average?
-Is calorie counting necessary?
-Are these extra calories only for breast milk production? (No, also for mother's healing)
-How much extra protein is recommended?
-Why is good nutrition important for the mother post-delivery? (Tissue healing)
-Should new mothers stay hydrated? How much fluid?
-What non-food "nutrition" does a mother's body need? (Care, support, understanding)
-How does the course emphasize self-care for the mother?
-]
-
-**SECTION 3: VIDEO SEGMENT DATA **
-[
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_Welcome_Seg01.mp4",
-    "segment_description": [
-      "What is this breastfeeding course about?",
-      "Who is this course for (parents, expecting parents)?",
-      "What does the course aim to provide (new information, guidance, answers, empowerment)?",
-      "Will this course cover bottle feeding?",
-      "Who is Sonal, the course instructor?",
-      "What is Sonal's professional background and personal experience with breastfeeding?",
-      "What is the 'beauty' of the information shared in this course (heartfelt and evidence-based)?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_GoalsFathers_Seg02.mp4",
-    "segment_description": [
-      "What is the primary goal of this course?",
-      "What practical advice and guidance will the course offer for the initial months/weeks?",
-      "Why is it highly encouraged for fathers to take this course?",
-      "How can fathers benefit from this course?",
-      "What role can fathers play in supporting the new mother if they have this knowledge?",
-      "Why is the new mother often occupied physically, mentally, hormonally, and emotionally?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_WhatIsBF_Seg03.mp4",
-    "segment_description": [
-      "What is breastfeeding?",
-      "How is breastfeeding described as nature's way of nourishing babies?",
-      "Why is the ability to nourish another human being considered incredible or miraculous?",
-      "What 'chaos' can occur during childbirth?",
-      "How can the chaos of childbirth lead to missing the right moment or technique for breastfeeding?",
-      "What can happen if there are unnecessary delays in initiating breastfeeding?",
-      "Can delays or difficult situations lead to formula feeding?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_Empowerment_Seg04.mp4",
-    "segment_description": [
-      "How does this course aim to equip parents with information upfront?",
-      "What steps should parents know to take for their breastfeeding journey?",
-      "What role can fathers play in communicating with hospitals or family?",
-      "What key topics will parents learn to start their breastfeeding journey?",
-      "What does the 'first hour after birth' mean in the context of breastfeeding?",
-      "What is the correct way of latching the baby?",
-      "How important is self-care for the mother during breastfeeding?",
-      "How will the course help demystify myths and judgments around breastfeeding?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_Workshop_Seg05.mp4",
-    "segment_description": [
-      "How can having breastfeeding information from the beginning change a parent's journey?",
-      "Will there be a live workshop after this course?",
-      "What topics will the live workshop cover (latch techniques, bottle feeding techniques)?",
-      "When will participants receive an invite for the live session?",
-      "Who will be conducting the live workshop?",
-      "What will happen during the live workshop (Q&A, practical techniques)?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_ModuleOverview_Seg06.mp4",
-    "segment_description": [
-      "How many modules are in this course?",
-      "What will be discussed in Module 1? (Birth, critical period, first hour, breast milk details)",
-      "What is the focus of Module 2? (Mother-baby bond)",
-      "What will Module 3 cover? (Where to start, how to latch, good latch signs)",
-      "What basics are covered in Module 4? (Positioning, latching basics, signs of incorrect latch, when to seek help)",
-      "What is the main topic of Module 5? (Demything breastfeeding myths)"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/Intro_Module/BFTS01_Intro_MythsWorkshop_Seg07.mp4",
-    "segment_description": [
-      "Why is Module 5 (demything breastfeeding myths) particularly important?",
-      "What is the goal of Module 5 for new parents? (Avoid burden of judgment, myth, or unknown)",
-      "Will the live session cover questions from the course?",
-      "Will the live workshop include practical exercises for latching and bottle feeding?"
-    ]
-  },
-  // Segments from Video 2 (Module 1)
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_IntroAndFathersRole_Seg01.mp4",
-    "segment_description": [
-      "What essential information will Module 1 cover for new parents?",
-      "Why is it especially important for fathers to understand the steps in Module 1?",
-      "How can fathers support the mother and baby during the critical period of birth?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_FamilySupportBirth_Seg02.mp4",
-    "segment_description": [
-      "Why is the mother likely to be occupied and tired after childbirth (vaginal or C-section)?",
-      "What role do fathers, caretakers, and family play in being aware of necessary actions?",
-      "How can family support ensure important steps are performed when the mother is not in an optimal state?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_CriticalPeriodDefined_Seg03.mp4",
-    "segment_description": [
-      "What is the critical period of birth?",
-      "How does a baby transition from the womb to the outside world?",
-      "What environment do newborns move from and to?",
-      "What has been the baby's natural habitat?",
-      "Why do babies instinctively want their mother upon birth?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_SwimmingPoolAnalogy_Seg04.mp4",
-    "segment_description": [
-      "What analogy is used to explain a baby's natural inclination towards their mother after birth?",
-      "How does the swimming pool example illustrate a baby reaching for a surface?",
-      "Who is the 'surface' for the baby in the world of birth?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_ReunitingAfterSeparation_Seg05.mp4",
-    "segment_description": [
-      "Why is it important for new parents to remember the baby's instinct to reach for the mother?",
-      "What happens in cases of separation (C-section, baby needs medical care like jaundice)?",
-      "What should be ensured as soon as the baby comes back or the mother recovers?",
-      "Why do mother and baby need to be together immediately after any separation?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_GoldenHourSignificance_Seg06.mp4",
-    "segment_description": [
-      "What is the 'first hour' post-delivery also known as? (Golden Hour)",
-      "Why is the golden hour a critical period for both mother and newborn?",
-      "How does this initial hour stand apart from other breastfeeding activities?",
-      "Why is it important for new and expecting parents to remember the significance of this first hour?"
-    ]
-  },
-  // Assuming Segment 7 (Innate Neuro-Behavior Analogy) is NOT split for this example
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_InnateNeuroBehaviorAnalogy_Seg07.mp4",
-    "segment_description": [
-      "What quote describes innate neuro-behavior in mammals and babies?",
-      "What non-baby example (finding a partner in Asian cultures) is used to explain this concept?",
-      "How do hormones and behaviors align during the 'partner-finding' age?",
-      "How does this same concept of innate neuro-behavior apply to a baby's first hour?",
-      "What is the baby's innate neuroreaction during the first hour? (Wanting to be next to mother)"
-    ]
-  },
-  // If Segment 7 WAS split:
-  // {
-  //   "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_InnateNeuroBehaviorQuote_Seg07a.mp4",
-  //   "segment_description": ["What quote describes innate neuro-behavior in mammals and babies?", "What is innate neuro-behavior?"]
-  // },
-  // {
-  //   "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_PartnerAnalogy_Seg07b.mp4",
-  //   "segment_description": ["What non-baby example (finding a partner) is used to explain innate neuro-behavior?", "How do hormones and behaviors align during the 'partner-finding' age?"]
-  // },
-  // {
-  //   "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_ApplyingAnalogyToBaby_Seg07c.mp4",
-  //   "segment_description": ["How does the partner-finding analogy apply to a baby's first hour?", "What is the baby's innate neuroreaction during the first hour?"]
-  // },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_ExpressingInnateBehaviors_Seg08.mp4",
-    "segment_description": [
-      "What happens when mother and baby are together in the first hour regarding innate neuro-behaviors?",
-      "Why is the first hour so significant for babies to express what they want to do?",
-      "How does being with the mother allow babies to express their innate behaviors comfortably?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_NewbornBiologicalNeeds_Seg09.mp4",
-    "segment_description": [
-      "What are the basic biological needs of a newborn baby after birth?",
-      "Why do newborns require oxygenation?",
-      "Why do newborns need nutrition?",
-      "Why is maintaining a warm body temperature crucial for newborns?",
-      "Why do newborns need protection?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_NewbornCapabilities_Seg10.mp4",
-    "segment_description": [
-      "Do newborns know anything despite being vulnerable?",
-      "What capabilities of a newborn should every parent know?",
-      "How do babies recognize their mother? (Smell, voice, touch)",
-      "What gives newborns the most comfort?",
-      "Do babies have inherent knowledge of suckling?",
-      "Can babies initiate suckling and drinking from breasts themselves?",
-      "What actions (suck, sip, rhythm, swallow) do babies already know?",
-      "What might be seen in ultrasounds related to suckling?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_BreastfeedingEnvironment_Seg11.mp4",
-    "segment_description": [
-      "Why is a calm, relaxed, and quiet environment important for breastfeeding initiation?",
-      "What should parents remember about a baby's transition and needs (support with breathing, warmth, nutrition, protection)?",
-      "What key capabilities do newborns possess for breastfeeding (recognizing mother, ability to suck/swallow)?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_ColostrumIntro_Seg12.mp4",
-    "segment_description": [
-      "What is the first milk produced by the mother's body called?",
-      "Why is information about colostrum crucial for family and fathers?",
-      "What should be done if the mother is ready with colostrum but separated from the baby?",
-      "When does colostrum letdown usually happen?",
-      "What is the ideal scenario for giving colostrum?",
-      "What if breastfeeding cannot start in the first hour?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_ColostrumBenefits_Seg13.mp4",
-    "segment_description": [
-      "Why is it important to give colostrum to the baby? What are its benefits?",
-      "Is colostrum nutrient-rich? What does it contain? (Probiotics, proteins, vitamins, minerals)",
-      "How does colostrum boost a baby's immune system? (Antibodies, immunoglobulins)",
-      "How does colostrum benefit a newborn's gut?",
-      "Why is colostrum's laxative nature important? (Helps pass first poop)"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_EnsuringColostrumAndBonding_Seg14.mp4",
-    "segment_description": [
-      "How does colostrum contribute to the bonding and comfort moment for the baby?",
-      "What is the ideal way to give colostrum in the first hour? (Mother and baby together)",
-      "What should you do if direct breastfeeding for colostrum isn't possible in the first hour?",
-      "What should be communicated to hospital staff about giving expressed colostrum?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_BreastMilkBenefitsNutritionImmunity_Seg15.mp4",
-    "segment_description": [
-      "Do the benefits of colostrum extend to mature breast milk?",
-      "Why is it important to know about breast milk benefits before starting the journey?",
-      "How is breast milk the 'most perfect nutrient balance' for babies?",
-      "How does breast milk provide immune system support throughout breastfeeding?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_BreastMilkFattyAcidsAnyAmount_Seg16.mp4",
-    "segment_description": [
-      "What fatty acids in breast milk are crucial for brain development? (Omega-3, Omega-6)",
-      "Why is the immune system a primary concern for newborns, and how does breast milk help?",
-      "Even if formula is introduced, why is it recommended to continue any amount of breast milk?",
-      "Why is balancing Omega-3 and Omega-6 difficult for adults, yet perfectly balanced in breast milk?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_BreastMilkBenefitsOmegaBalance_Seg17.mp4",
-    "segment_description": [
-      "How difficult is it for adults to balance Omega-3 and Omega-6?",
-      "How is breast milk superior in providing this balance?",
-      "Why should you give whatever breast milk you can, even if not exclusively breastfeeding?"
-    ]
-  },
-  // Assuming Segment 18 (Digestion & Microbe Building) is NOT split for this example
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_DigestionMicrobeBuilding_Seg18.mp4",
-    "segment_description": [
-      "What are the benefits of breast milk regarding ease of digestion?",
-      "Why is achieving ease of digestion difficult with formula?",
-      "Are gastric problems common in formula-fed babies?",
-      "How does breast milk help in building good gut bacteria (microbe building)?",
-      "How does this microbe building reduce the risk of allergies or food sensitivities?",
-      "Why is any effort in breastfeeding worth it?"
-    ]
-  },
-   If Segment 18 WAS split:
-   {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_EaseOfDigestion_Seg18a.mp4",
-     "segment_description": ["What are the benefits of breast milk regarding ease of digestion?", "Why is achieving ease of digestion difficult with formula?", "Are gastric problems common in formula-fed babies?"]
-   },
-   {
-     "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_MicrobeBuildingWorth_Seg18b.mp4",
-     "segment_description": ["How does breast milk help in building good gut bacteria (microbe building)?", "How does this microbe building reduce the risk of allergies or food sensitivities?", "Why is any effort in breastfeeding worth it?"]
-   },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_FormulaIntroNotBad_Seg19.mp4",
-    "segment_description": [
-      "What is a classic example of when formula milk might be introduced (e.g., after C-section)?",
-      "Is formula feeding bad?",
-      "How are formulas benchmarked? (Against breast milk as the gold standard)",
-      "Is formula the next safe option for babies if breastfeeding isn't fully possible?",
-      "Can medical or lifestyle decisions lead to using formula?"
-    ]
-  },
-  // Assuming Segment 20 (Formula Misconceptions) is NOT split for this example
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_FormulaMisconceptions_Seg20.mp4",
-    "segment_description": [
-      "How is formula sometimes incorrectly portrayed as superior or necessary if breast milk isn't 'seen'?",
-      "Why might people question if breast milk is enough? (Cannot see the quantity)",
-      "What 'spiritual' aspect of breastfeeding makes it hard to quantify?",
-      "Should concerns about breast milk sufficiency be self-diagnosed or professionally addressed?",
-      "Is formula a replacement that makes a child nutritionally deficient if not given? (No, breast milk is gold standard)"
-    ]
-  },
-   If Segment 20 WAS split:
-   {
-     "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_FormulaHype_Seg20a.mp4",
-     "segment_description": ["How is formula sometimes incorrectly portrayed as superior?", "Why might people question if breast milk is enough because it's unseen?"]
-   },
-   {
-     "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_BreastmilkSufficiency_Seg20b.mp4",
-     "segment_description": ["Should concerns about breast milk sufficiency be self-diagnosed?", "Why is professional guidance important?", "Is breast milk the gold standard?"]
-   },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_FormulaHeavinessChoice_Seg21.mp4",
-    "segment_description": [
-      "Is formula heavy for a baby?",
-      "Why can some formula compositions be heavy for babies? (Not a complete replica of breast milk)",
-      "Who should you discuss the type of formula with? (Lactation consultant, pediatrician)",
-      "When might a change in formula composition be needed?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_SwitchingFormulaCombination_Seg22.mp4",
-    "segment_description": [
-      "Can formula be heavy even if synthetically made and safe?",
-      "Might you need to switch formula brands or compositions? Who can help?",
-      "Can I do combination feeding (breast milk and formula)?",
-      "Is combination feeding viable?",
-      "What questions should be discussed with a consultant regarding combination feeding (e.g., what to give first)?"
-    ]
-  },
-  {
-    "gcs_object_path": "BFTS01/M1_CriticalPeriodAndMilk/BFTS01_M1_CombinationFeedingTip_Seg23.mp4",
-    "segment_description": [
-      "What is a specific tip for mothers doing combination feeding?",
-      "Why focus on giving morning and night breast milk?",
-      "How does breast milk adjust at night based on baby's needs? (Becomes drowsier)",
-      "Why is morning breast milk (foremilk and hindmilk) particularly beneficial? (High in fat)"
-    ]
-  }
-  // ... (YOU WILL CONTINUE TO ADD ALL OTHER VIDEO SEGMENTS FROM THE REST OF YOUR COURSE HERE) ...
-]
 """
+
 
 # Generation Configuration
 generation_config = GenerationConfig(
-    temperature=0.4, # Adjust for creativity vs. consistency
-    top_p=0.95,
-    top_k=64,
-    max_output_tokens=65536, # Max output specified by model details
+    temperature=0.7, # Balanced temperature for natural but focused responses
+    top_p=0.9, # Slightly more focused for better structure
+    top_k=40, # More focused vocabulary for professional health advice
+    max_output_tokens=8192, # Max output for Gemini Flash (adjust if using a different model with different limits)
 )
 
-# Safety Settings - Adjust as needed, be cautious with medical advice context
+# Safety Settings
 safety_settings = [
-    {
-        'category': HarmCategory.HARM_CATEGORY_HARASSMENT, 
-        'threshold': SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    },
-    {
-        'category': HarmCategory.HARM_CATEGORY_HATE_SPEECH, 
-        'threshold': SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    },
-    {
-        'category': HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, 
-        'threshold': SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    },
-    {
-        'category': HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, 
-        'threshold': SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    },
-    # Example using different threshold enum:
-    # {
-    #     'category': HarmCategory.HARM_CATEGORY_MEDICAL, 
-    #     'threshold': SafetySetting.HarmBlockThreshold.BLOCK_ONLY_HIGH
-    # },
+    {"category": HarmCategory.HARM_CATEGORY_HARASSMENT, "threshold": SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
+    {"category": HarmCategory.HARM_CATEGORY_HATE_SPEECH, "threshold": SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
+    {"category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, "threshold": SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
+    {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
 ]
 
-# --- Chat Session Management ---
+# Store active models per session_id (less critical now, but good for consistency if we add state later)
+# Key: session_id (string), Value: genai.GenerativeModel object
+active_models = {}
 
-# Store active chat sessions in memory (suitable for MVP)
-# Key: session_id (string), Value: genai.ChatSession object
-active_chats = {}
+def get_model_for_session(session_id: str):
+    """Gets or creates a model instance for the session."""
+    if session_id not in active_models:
+        logger.info(f"Creating new model instance for session: {session_id}")
+        try:
+            model = genai.GenerativeModel(
+                model_name=MODEL_NAME,
+                safety_settings=safety_settings,
+                generation_config=generation_config,
+                system_instruction=SYSTEM_PROMPT
+            )
+            active_models[session_id] = model
+            return model
+        except Exception as e:
+            logger.error(f"Error initializing model for session {session_id}: {e}")
+            raise
+    return active_models[session_id]
 
-def start_new_chat(session_id: str):
-    """Starts a new chat session with the specified configuration."""
-    logger.info(f"Starting new chat session: {session_id}")
-    try:
-        model = genai.GenerativeModel(
-            model_name=MODEL_NAME,
-            safety_settings=safety_settings,
-            generation_config=generation_config,
-            system_instruction=SYSTEM_PROMPT,
-            # Enable thinking mode - Requires specific SDK support or parameter name
-            # As of google-generativeai 0.7.1, direct 'thinking_enabled' isn't obvious.
-            # This might be implicitly handled or require a specific API version/flag.
-            # We will proceed assuming the model uses its capabilities when appropriate.
-            # Consider adding specific tools/function calls if needed later.
-        )
-        chat_session = model.start_chat(history=[]) # Start with empty history
-        active_chats[session_id] = chat_session
-        return chat_session
-    except Exception as e:
-        logger.error(f"Error initializing model or starting chat for session {session_id}: {e}")
-        raise
+def generate_answer_for_question(session_id: str, selected_question_text: str):
+    """
+    Generates an answer for a pre-selected question using the full transcript in the system prompt.
+    """
+    model = get_model_for_session(session_id)
 
-def send_message(session_id: str, message: str):
-    """Sends a message to the chat session and returns the response."""
-    if session_id not in active_chats:
-        logger.warning(f"Session ID {session_id} not found. Starting new chat.")
-        start_new_chat(session_id) # Or handle as an error depending on desired behavior
-
-    chat_session = active_chats[session_id]
+    # Create a more natural, direct prompt
+    prompt_for_selected_question = f"A new mother is asking: {selected_question_text}\n\nPlease provide a comprehensive, well-structured answer with practical guidance."
 
     try:
-        logger.info(f"Sending message to session {session_id}: '{message[:50]}...'")
-        # Use the SYNCHRONOUS send_message method
-        response = chat_session.send_message(message)
+        logger.info(f"Generating answer for session {session_id}, question: '{selected_question_text[:100]}...'")
+        # For a direct Q&A based on a massive system prompt, generate_content is more direct
+        # than start_chat().
+        response = model.generate_content(prompt_for_selected_question)
         logger.info(f"Received response for session {session_id}")
 
-        # Basic check for blocked response due to safety
         if not response.parts:
-             logger.warning(f"Response potentially blocked for session {session_id}. Finish reason: {response.prompt_feedback.block_reason}")
-             # Consider checking response.candidates[0].finish_reason == "SAFETY"
-             if response.prompt_feedback.block_reason:
-                 return f"My apologies, but I cannot respond to that due to safety guidelines ({response.prompt_feedback.block_reason}). Could you please rephrase or ask something else?"
-             else:
-                 # Might be another reason like MAX_TOKENS, RECITATION etc.
-                 return "I'm sorry, I encountered an issue generating a response. Please try again."
+            logger.warning(f"Response potentially blocked for session {session_id}. Prompt feedback: {response.prompt_feedback}")
+            block_reason_message = ""
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                 block_reason_message = f" (Reason: {response.prompt_feedback.block_reason.name})"
 
+            # Check candidates for safety ratings if parts are empty
+            candidate_safety_issues = []
+            if response.candidates:
+                for cand in response.candidates:
+                    if cand.safety_ratings:
+                        for rating in cand.safety_ratings:
+                            if rating.probability.value > 2: # THRESHOLD_UNSPECIFIED=0, NEGLIGIBLE=1, LOW=2, MEDIUM=3, HIGH=4
+                                candidate_safety_issues.append(f"{rating.category.name} ({rating.probability.name})")
+            if candidate_safety_issues:
+                block_reason_message += f" Content issues: {', '.join(candidate_safety_issues)}."
 
-        # Accessing the text content
-        # Iterating through parts is safer if multiple parts could exist
+            return f"My apologies, but I cannot provide a detailed answer to that right now due to content guidelines{block_reason_message}. Please try rephrasing or selecting a different question."
+
         response_text = "".join(part.text for part in response.parts)
-
-        # Log history count for debugging
-        logger.debug(f"Session {session_id} history length: {len(chat_session.history)}")
-
         return response_text
 
     except Exception as e:
-        logger.error(f"Error during send_message for session {session_id}: {e}")
-        # More specific error handling could be added here based on API errors
-        # e.g., handle ResourceExhaustedError, InternalServerError, etc.
-        return f"Sorry, I encountered an error trying to process your request: {e}"
+        logger.error(f"Error during generate_answer_for_question for session {session_id}: {e}")
+        return f"Sorry, I encountered an error trying to generate an answer: {str(e)}"
 
-# Optional: Function to clean up old sessions if needed
-# def cleanup_inactive_sessions():
-#     # Logic to identify and remove old sessions from active_chats
-#     pass 
+# Renaming for clarity in the new flow
+send_message = generate_answer_for_question
+
+# This function is less critical now as we don't maintain a long chat history for this flow,
+# but keeping the structure for potential future use or if session-specific model instances are beneficial.
+def start_new_chat(session_id: str):
+    """Ensures a model instance is ready for the session."""
+    logger.info(f"Ensuring model is ready for session: {session_id}")
+    get_model_for_session(session_id) # This will create if not exists
+    return True # Indicate success or readiness
