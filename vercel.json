@@ -37,6 +37,19 @@
       ]
     },
     {
+      "source": "/static/media/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        },
+        {
+          "key": "Accept-Ranges",
+          "value": "bytes"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {

@@ -1,0 +1,2 @@
+[33m093cb62[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m  Enhance vercel.json configuration - Added function timeout, static file caching, security headers, and environment variable setup for better performance and security
+[33m33fb070[m[33m ([m[1;31morigin/master[m[33m)[m  Improve AI responses and UI structure - Enhanced system prompt for natural healthcare advice under 250 words, removed course references, improved message formatting with headings and lists, updated to Gemini 2.5 Flash Preview, better structured responses with professional tone

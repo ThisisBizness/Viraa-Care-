@@ -1,0 +1,11 @@
+This is a placeholder file. 
+
+Replace this with your actual demo audio file named:
+demo-audio.mp3
+
+Supported audio formats:
+- MP3 (recommended)
+- WAV
+- OGG
+
+The audio will automatically play inline in the chat after each AI response. 

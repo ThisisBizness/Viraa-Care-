@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             hideTypingIndicator();
-            addMessageToUI('bot', data.response, true);
+            addMessageToUI('bot', data.response, true, data.media);
             announceToScreenReader('Answer received from Sona');
             
         } catch (error) {
@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    function addMessageToUI(sender, text, isAnswerDisplay = false) {
+    function addMessageToUI(sender, text, isAnswerDisplay = false, media = null) {
         const time = getCurrentTime();
         const isUser = sender === 'user';
         const senderName = isUser ? 'You' : 'Sona';
@@ -506,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="message-text" ${isAnswerDisplay ? 'role="main"' : ''}>
                             ${isAnswerDisplay ? formattedText : `<p>${formattedText}</p>`}
+                            ${media && isAnswerDisplay && !isUser ? generateMediaHTML(media) : ''}
                             ${isAnswerDisplay ? `
                                 <div class="answer-actions">
                                     <button class="back-button" 
@@ -532,6 +533,159 @@ document.addEventListener('DOMContentLoaded', () => {
         newCodeBlocks.forEach(btn => btn.addEventListener('click', handleCopyCode));
         
         scrollToBottom();
+    }
+
+    function generateMediaHTML(media) {
+        if (!media) return '';
+        
+        let mediaContent = '';
+        
+        // Generate video content
+        if (media.video) {
+            const videoHTML = `
+                <video 
+                    class="video-player" 
+                    controls 
+                    preload="metadata"
+                    poster="${media.video.poster || ''}"
+                    aria-label="Demonstration video"
+                    onloadstart="handleMediaLoadStart(this)"
+                    oncanplay="handleMediaCanPlay(this)"
+                    onerror="handleMediaError(this)">
+                    <source src="${media.video.url}" type="${media.video.type}">
+                    <p>Your browser doesn't support video playback. <a href="${media.video.url}" target="_blank">Download the video</a> instead.</p>
+                </video>
+            `;
+            
+            mediaContent += `
+                <div class="media-section">
+                    <div class="media-header">
+                        <svg class="media-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <h3 class="media-title">Video Demonstration</h3>
+                    </div>
+                    <div class="media-content">
+                        ${videoHTML}
+                        <div class="media-controls">
+                            <button class="media-control-btn" onclick="togglePlayPause(this.closest('.media-section').querySelector('video'))">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                Play/Pause
+                            </button>
+                            <div class="media-info">
+                                <span>Click to play the demonstration</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Generate audio content
+        if (media.audio) {
+            const audioHTML = `
+                <audio 
+                    class="audio-player" 
+                    controls 
+                    preload="metadata"
+                    aria-label="Demonstration audio"
+                    onloadstart="handleMediaLoadStart(this)"
+                    oncanplay="handleMediaCanPlay(this)"
+                    onerror="handleMediaError(this)">
+                    <source src="${media.audio.url}" type="${media.audio.type}">
+                    <p>Your browser doesn't support audio playback. <a href="${media.audio.url}" target="_blank">Download the audio</a> instead.</p>
+                </audio>
+            `;
+            
+            mediaContent += `
+                <div class="media-section">
+                    <div class="media-header">
+                        <svg class="media-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                        <h3 class="media-title">Audio Guide</h3>
+                    </div>
+                    <div class="media-content">
+                        ${audioHTML}
+                        <div class="media-controls">
+                            <button class="media-control-btn" onclick="togglePlayPause(this.closest('.media-section').querySelector('audio'))">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                Play/Pause
+                            </button>
+                            <div class="media-info">
+                                <span>Listen to the audio guide</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (mediaContent) {
+            return `
+                <div class="media-container">
+                    ${mediaContent}
+                </div>
+            `;
+        }
+        
+        return '';
+    }
+
+    // Media control functions
+    window.togglePlayPause = function(mediaElement) {
+        if (mediaElement.paused || mediaElement.ended) {
+            mediaElement.play().catch(e => {
+                console.error('Error playing media:', e);
+                announceToScreenReader('Unable to play media');
+            });
+        } else {
+            mediaElement.pause();
+        }
+    }
+
+    window.handleMediaLoadStart = function(mediaElement) {
+        const container = mediaElement.closest('.media-section');
+        const info = container.querySelector('.media-info span');
+        if (info) {
+            info.textContent = 'Loading...';
+        }
+    }
+
+    window.handleMediaCanPlay = function(mediaElement) {
+        const container = mediaElement.closest('.media-section');
+        const info = container.querySelector('.media-info span');
+        if (info) {
+            const duration = mediaElement.duration;
+            if (duration && !isNaN(duration)) {
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                const mediaType = mediaElement.tagName.toLowerCase();
+                info.textContent = `${mediaType === 'video' ? 'Video' : 'Audio'} ready (${minutes}:${seconds.toString().padStart(2, '0')})`;
+            } else {
+                info.textContent = `${mediaElement.tagName.toLowerCase() === 'video' ? 'Video' : 'Audio'} ready`;
+            }
+        }
+        announceToScreenReader('Media loaded and ready to play');
+    }
+
+    window.handleMediaError = function(mediaElement) {
+        const container = mediaElement.closest('.media-section');
+        const content = container.querySelector('.media-content');
+        if (content) {
+            const mediaType = mediaElement.tagName.toLowerCase();
+            content.innerHTML = `
+                <div class="media-error">
+                    <p>Unable to load ${mediaType}. The file may not be available yet.</p>
+                    <p><em>Please add the ${mediaType} file to the media folder.</em></p>
+                </div>
+            `;
+        }
+        announceToScreenReader('Media failed to load');
     }
     
     // Enhanced global function for back button in answer display

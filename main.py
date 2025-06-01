@@ -21,6 +21,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     session_id: str
     response: str # This will be the detailed answer
+    media: dict | None = None # Video and audio information
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -81,7 +82,21 @@ async def chat_endpoint(chat_request: ChatRequest):
     try:
         # Get the detailed answer from the chat logic
         bot_answer = generate_answer_for_question(session_id, selected_question)
-        return ChatResponse(session_id=session_id, response=bot_answer)
+        
+        # Add media information (for POC - same video/audio for all responses)
+        media_info = {
+            "video": {
+                "url": "/static/media/demo-video.mp4",
+                "type": "video/mp4",
+                "poster": "/static/media/demo-video-poster.jpg"  # Optional poster image
+            },
+            "audio": {
+                "url": "/static/media/demo-audio.mp3",
+                "type": "audio/mpeg"
+            }
+        }
+        
+        return ChatResponse(session_id=session_id, response=bot_answer, media=media_info)
 
     except HTTPException as e:
         raise e

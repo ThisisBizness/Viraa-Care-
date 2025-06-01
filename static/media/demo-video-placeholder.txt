@@ -1,0 +1,11 @@
+This is a placeholder file. 
+
+Replace this with your actual demo video file named:
+demo-video.mp4
+
+Supported video formats:
+- MP4 (recommended)
+- WebM  
+- OGV
+
+The video will automatically play inline in the chat after each AI response. 
