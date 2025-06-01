@@ -110,7 +110,15 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting Uvicorn server locally...")
+    
+    # Get port from environment variable (for Google Cloud Run) or default to 8000
+    port = int(os.getenv("PORT", 8000))
+    host = "0.0.0.0" if os.getenv("PORT") else "127.0.0.1"
+    
+    logger.info(f"Starting Uvicorn server on {host}:{port}...")
     if not os.getenv("GOOGLE_API_KEY"):
         logger.warning("GOOGLE_API_KEY not set in environment. Please create a .env file.")
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, log_level="info")
+    
+    # Use reload=False for production (Google Cloud)
+    reload = not bool(os.getenv("PORT"))
+    uvicorn.run("main:app", host=host, port=port, reload=reload, log_level="info")
