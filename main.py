@@ -16,6 +16,7 @@ from chat_logic import generate_answer_for_question, start_new_chat, active_mode
 class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str # This will now be the text of the selected question
+    language: str | None = "en" # Add language, default to English
 
 # Define the response body structure
 class ChatResponse(BaseModel):
@@ -58,7 +59,8 @@ async def chat_endpoint(chat_request: ChatRequest):
     and returns the detailed answer.
     """
     session_id = chat_request.session_id
-    selected_question = chat_request.message # This is the text of the question
+    selected_question = chat_request.message
+    language = chat_request.language or "en" # Ensure language is set, default to English
 
     if not selected_question:
         raise HTTPException(status_code=400, detail="Selected question (message) cannot be empty.")
@@ -81,7 +83,7 @@ async def chat_endpoint(chat_request: ChatRequest):
 
     try:
         # Get the detailed answer from the chat logic
-        bot_answer = generate_answer_for_question(session_id, selected_question)
+        bot_answer = generate_answer_for_question(session_id, selected_question, language)
         
         # Add media information (for POC - same video/audio for all responses)
         media_info = {
@@ -110,15 +112,7 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # Get port from environment variable (for Google Cloud Run) or default to 8000
-    port = int(os.getenv("PORT", 8000))
-    host = "0.0.0.0" if os.getenv("PORT") else "127.0.0.1"
-    
-    logger.info(f"Starting Uvicorn server on {host}:{port}...")
+    logger.info("Starting Uvicorn server locally...")
     if not os.getenv("GOOGLE_API_KEY"):
         logger.warning("GOOGLE_API_KEY not set in environment. Please create a .env file.")
-    
-    # Use reload=False for production (Google Cloud)
-    reload = not bool(os.getenv("PORT"))
-    uvicorn.run("main:app", host=host, port=port, reload=reload, log_level="info")
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, log_level="info")

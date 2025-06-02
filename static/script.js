@@ -4,9 +4,106 @@ document.addEventListener('DOMContentLoaded', () => {
     const typingIndicator = document.getElementById('typing-indicator');
     // Input area is no longer the primary interaction, but we might use it for displaying answers
     const mainContentArea = document.getElementById('chat-messages'); // Re-using this for display
+    const languageSelector = document.getElementById('language-selector');
 
     // Enhanced loading state management
     let isLoading = false;
+
+    let currentLanguage = 'en'; // Default language
+
+    // --- Translated Content Store ---
+    // For a POC, we'll hardcode translations here. In a real app, this would come from a more robust i18n solution.
+    const translations = {
+        en: {
+            selectCategoryPrompt: "Please select a category to explore:",
+            selectQuestionPrompt: "Choose a question from this category:",
+            backToCategories: "← Back to Categories",
+            categories: [
+        {
+            name: "Is My Baby Getting Enough? / Is My Milk Okay?",
+                    icon: "🍼",
+            questions: [
+                "How can I tell if my baby is getting enough milk when I breastfeed?",
+                "What are the sure signs my baby is well-fed and satisfied after breastfeeding?",
+                "My baby fusses at the breast or pulls away. Could it be they're not getting enough milk?",
+                "How does my body actually make enough milk for my baby?",
+                "What is colostrum, and why is everyone saying it's so important for my newborn?",
+                "What are the main benefits of my breast milk for my baby right now?",
+                "My breasts don't feel as \"full\" as before, or they feel uneven after feeding. Is this a sign of a problem?",
+                "I've heard breast milk changes. Does my milk change for my baby's needs, like at night or in the morning?"
+            ]
+        },
+        {
+            name: "Help! Breastfeeding is Painful!",
+                    icon: "😣",
+            questions: [
+                "Why are my nipples so sore? Is some pain just part of breastfeeding?",
+                "How can I fix my baby's latch to stop it from hurting me?",
+                "Is it normal to feel cramping in my belly when I breastfeed?",
+                "What are the absolute \"must-do's\" before I even try to latch my baby to avoid problems?",
+                "How do I hold my own breasts correctly to help my baby latch without pain?",
+                "What does a \"good latch\" actually look like? I need to see it.",
+                "If the pain doesn't stop, what are my options? Do I have to just give up?"
+            ]
+        },
+        {
+            name: "My Baby is Struggling to Latch!",
+                    icon: "👶",
+            questions: [
+                "My baby just can't seem to latch on properly. What are the key things to get right?",
+                "How do I get my baby to open their mouth WIDE for a good latch?",
+                "My baby seems to only get the very tip of my nipple. How do I encourage a deeper latch?",
+                "What are the immediate signs I can look for to know if the latch is bad?",
+                "How should I hold my baby (neck, body) to help them latch effectively?",
+                "What is \"breast crawl\" and can my baby really find the breast on their own?",
+                "What are the early signs (feeding cues) that my baby is ready to eat, even before they cry?",
+                "If my baby is crying from hunger, will it be harder to latch them?"
+            ]
+        },
+        {
+            name: "I Need to Use a Bottle (Formula or My Milk)",
+                    icon: "🍼",
+            questions: [
+                "If I have to use formula, is it a bad choice for my baby?",
+                "Can I give both breast milk and formula? How do I manage that?",
+                "Can formula be hard for my baby to digest? What if they seem uncomfortable?",
+                "What's the best way to give my baby a bottle to avoid problems? (Paced Bottle Feeding)",
+                "How do I choose a good bottle and nipple if I'm also breastfeeding?",
+                "Should I still hold my baby close and make eye contact when bottle-feeding?"
+            ]
+        },
+        {
+            name: "Taking Care of ME While Breastfeeding",
+                    icon: "💆‍♀️",
+            questions: [
+                "What should I eat when I'm breastfeeding? Are there foods I absolutely have to avoid?",
+                "Will I be hungrier when breastfeeding, and how much more should I eat?",
+                "Why is eating well important for me, not just for making milk?",
+                "How much water should I be drinking?",
+                "What's the most important \"non-food\" nutrition I need as a new breastfeeding mom?",
+                "My family has a lot of old wives' tales about breastfeeding. How do I deal with these myths?",
+                "How can my partner and family truly support me and this breastfeeding journey?"
+            ]
+        }
+            ]
+        },
+        hi: {
+            selectCategoryPrompt: "कृपया एक श्रेणी चुनें:",
+            selectQuestionPrompt: "इस श्रेणी से एक प्रश्न चुनें:",
+            backToCategories: "← श्रेणियों पर वापस जाएं",
+            categories: [ /* TODO: Add Hindi translations for categories and questions */
+                { name: "क्या मेरे बच्चे को पर्याप्त दूध मिल रहा है? / क्या मेरा दूध ठीक है?", icon: "🍼", questions: ["कैसे पता चलेगा कि स्तनपान कराते समय मेरे बच्चे को पर्याप्त दूध मिल रहा है?", /* ... more Hindi questions ... */ ] },
+                { name: "मदद! स्तनपान दर्दनाक है!", icon: "😣", questions: [/* ... Hindi questions ... */] },
+                { name: "मेरा बच्चा ठीक से स्तनपान नहीं कर पा रहा है!", icon: "👶", questions: [/* ... Hindi questions ... */] },
+                { name: "मुझे बोतल का उपयोग करने की आवश्यकता है (फॉर्मूला या मेरा दूध)", icon: "🍼", questions: [/* ... Hindi questions ... */] },
+                { name: "स्तनपान के दौरान अपना ख्याल रखना", icon: "💆‍♀️", questions: [/* ... Hindi questions ... */] }
+            ]
+        },
+        bn: { /* Bengali translations - TODO */ selectCategoryPrompt: "অনুগ্রহ করে একটি বিভাগ নির্বাচন করুন:", backToCategories: "← বিভাগগুলিতে ফিরে যান", categories: [ { name: "আমার বাচ্চা কি যথেষ্ট পাচ্ছে? / আমার দুধ কি ঠিক আছে কর?", icon: "🍼", questions: [/* Bengali Questions */] } ] },
+        mr: { /* Marathi translations - TODO */ selectCategoryPrompt: "कृपया एक श्रेणी निवडा:", backToCategories: "← श्रेणींमध्ये परत जा", categories: [ { name: "माझ्या बाळाला पुरेसे दूध मिळत आहे का? / माझे दूध ठीक आहे का?", icon: "🍼", questions: [/* Marathi Questions */] } ] },
+        kn: { /* Kannada translations - TODO */ selectCategoryPrompt: "ದಯವಿಟ್ಟು ಒಂದು ವರ್ಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ:", backToCategories: "← ವರ್ಗಗಳಿಗೆ ಹಿಂತಿರುಗಿ", categories: [ { name: "ನನ್ನ ಮಗುವಿಗೆ ಸಾಕಷ್ಟು ಹಾಲು ಸಿಗುತ್ತಿದೆಯೇ? / ನನ್ನ ಹಾಲು ಸರಿಯಾಗಿದೆಯೇ?", icon: "🍼", questions: [/* Kannada Questions */] } ] },
+        gu: { /* Gujarati translations - TODO */ selectCategoryPrompt: "કૃપા કરીને એક શ્રેણી પસંદ કરો:", backToCategories: "← શ્રેણીઓ પર પાછા જાઓ", categories: [ { name: "શું મારા બાળકને પૂરતું દૂધ મળી રહ્યું છે? / શું મારું દૂધ બરાબર છે?", icon: "🍼", questions: [/* Gujarati Questions */] } ] }
+    };
 
     // --- Enhanced Theme Management ---
     function setTheme(theme) {
@@ -44,86 +141,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionId = sessionStorage.getItem('viraaChatSessionId');
     let currentCategory = null; // Track current category for better navigation
 
-    // --- Enhanced Categories and Questions Data ---
-    const categories = [
-        {
-            name: "Is My Baby Getting Enough? / Is My Milk Okay?",
-            icon: "🍼",
-            questions: [
-                "How can I tell if my baby is getting enough milk when I breastfeed?",
-                "What are the sure signs my baby is well-fed and satisfied after breastfeeding?",
-                "My baby fusses at the breast or pulls away. Could it be they're not getting enough milk?",
-                "How does my body actually make enough milk for my baby?",
-                "What is colostrum, and why is everyone saying it's so important for my newborn?",
-                "What are the main benefits of my breast milk for my baby right now?",
-                "My breasts don't feel as \"full\" as before, or they feel uneven after feeding. Is this a sign of a problem?",
-                "I've heard breast milk changes. Does my milk change for my baby's needs, like at night or in the morning?"
-            ]
-        },
-        {
-            name: "Help! Breastfeeding is Painful!",
-            icon: "😣",
-            questions: [
-                "Why are my nipples so sore? Is some pain just part of breastfeeding?",
-                "How can I fix my baby's latch to stop it from hurting me?",
-                "Is it normal to feel cramping in my belly when I breastfeed?",
-                "What are the absolute \"must-do's\" before I even try to latch my baby to avoid problems?",
-                "How do I hold my own breasts correctly to help my baby latch without pain?",
-                "What does a \"good latch\" actually look like? I need to see it.",
-                "If the pain doesn't stop, what are my options? Do I have to just give up?"
-            ]
-        },
-        {
-            name: "My Baby is Struggling to Latch!",
-            icon: "👶",
-            questions: [
-                "My baby just can't seem to latch on properly. What are the key things to get right?",
-                "How do I get my baby to open their mouth WIDE for a good latch?",
-                "My baby seems to only get the very tip of my nipple. How do I encourage a deeper latch?",
-                "What are the immediate signs I can look for to know if the latch is bad?",
-                "How should I hold my baby (neck, body) to help them latch effectively?",
-                "What is \"breast crawl\" and can my baby really find the breast on their own?",
-                "What are the early signs (feeding cues) that my baby is ready to eat, even before they cry?",
-                "If my baby is crying from hunger, will it be harder to latch them?"
-            ]
-        },
-        {
-            name: "I Need to Use a Bottle (Formula or My Milk)",
-            icon: "🍼",
-            questions: [
-                "If I have to use formula, is it a bad choice for my baby?",
-                "Can I give both breast milk and formula? How do I manage that?",
-                "Can formula be hard for my baby to digest? What if they seem uncomfortable?",
-                "What's the best way to give my baby a bottle to avoid problems? (Paced Bottle Feeding)",
-                "How do I choose a good bottle and nipple if I'm also breastfeeding?",
-                "Should I still hold my baby close and make eye contact when bottle-feeding?"
-            ]
-        },
-        {
-            name: "Taking Care of ME While Breastfeeding",
-            icon: "💆‍♀️",
-            questions: [
-                "What should I eat when I'm breastfeeding? Are there foods I absolutely have to avoid?",
-                "Will I be hungrier when breastfeeding, and how much more should I eat?",
-                "Why is eating well important for me, not just for making milk?",
-                "How much water should I be drinking?",
-                "What's the most important \"non-food\" nutrition I need as a new breastfeeding mom?",
-                "My family has a lot of old wives' tales about breastfeeding. How do I deal with these myths?",
-                "How can my partner and family truly support me and this breastfeeding journey?"
-            ]
-        }
-    ];
-
     // --- Enhanced UI Rendering with Better Accessibility ---
     function displayCategories() {
         currentCategory = null;
+        const currentTranslations = translations[currentLanguage];
         const categoriesHTML = `
             <div class="selection-prompt" role="status" aria-live="polite">
-                Please select a category to explore:
+                ${currentTranslations.selectCategoryPrompt}
             </div>
             <nav aria-label="Question categories">
                 <ul class="categories-list" role="list">
-                    ${categories.map((category, index) => `
+                    ${currentTranslations.categories.map((category, index) => `
                         <li role="listitem">
                             <button class="category-button" 
                                     data-category-index="${index}"
@@ -147,26 +175,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayQuestions(categoryIndex) {
-        const category = categories[categoryIndex];
+        const currentTranslations = translations[currentLanguage];
+        const category = currentTranslations.categories[categoryIndex];
         currentCategory = categoryIndex;
         
         const questionsHTML = `
             <button class="back-button" id="back-to-categories" aria-label="Go back to categories">
-                ← Back to Categories
+                ${currentTranslations.backToCategories}
             </button>
             <h2 class="category-title-display" id="category-title">
                 <span aria-hidden="true">${category.icon}</span>
                 ${category.name}
             </h2>
             <div class="selection-prompt" role="status" aria-live="polite">
-                Choose a question from this category:
+                ${currentTranslations.selectQuestionPrompt}
             </div>
             <nav aria-label="Questions in category" aria-describedby="category-title">
                 <ul class="questions-list" role="list">
                     ${category.questions.map((questionText, index) => `
                         <li role="listitem">
                             <button class="question-button" 
-                                    data-question-text="${escapeHTML(questionText)}"
+                                    data-question-text="${escapeHTML(questionText)}" 
+                                    data-question-lang="${currentLanguage}" 
                                     aria-describedby="question-${index}-desc">
                                 ${questionText}
                             </button>
@@ -182,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mainContentArea.innerHTML = questionsHTML;
         addQuestionEventListeners();
         scrollToTop();
-        announceToScreenReader(`${category.questions.length} questions loaded for ${category.name}`);
+        announceToScreenReader(`${category.questions.length} questions loaded for ${category.name} in ${currentLanguage}`);
     }
 
     function addCategoryEventListeners() {
@@ -217,7 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleQuestionClick(event) {
         if (isLoading) return;
         const questionText = event.currentTarget.dataset.questionText;
-        fetchAnswer(questionText);
+        const questionLang = event.currentTarget.dataset.questionLang || 'en'; // Fallback to 'en'
+        fetchAnswer(questionText, questionLang);
     }
 
     // Enhanced keyboard navigation
@@ -256,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Enhanced fetch with better error handling and loading states
-    async function fetchAnswer(questionText) {
+    async function fetchAnswer(questionText, language = 'en') {
         if (isLoading) return;
         
         setLoadingState(true);
@@ -273,7 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     session_id: sessionId,
-                    message: questionText
+                    message: questionText,
+                    language: language // Send selected language to backend
                 }),
                 signal: controller.signal
             });
@@ -412,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const listItems = lines.map(line => {
                 const content = line.replace(/^\s*\d+\.\s+/, '');
                 return `<li>${content}</li>`;
-            }).join('');
+        }).join('');
             return `<ol>${listItems}</ol>`;
         });
         
@@ -694,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displayQuestions(currentCategory);
             announceToScreenReader('Returned to questions list');
         } else {
-            displayCategories();
+        displayCategories();
             announceToScreenReader('Returned to categories');
         }
     }
@@ -778,4 +810,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize ---
     displayCategories();
     console.log('Viraa Care Categorical Assistant initialized with enhanced accessibility and UX features.');
+
+    languageSelector.addEventListener('change', (event) => {
+        currentLanguage = event.target.value;
+        // Store language preference if desired (e.g., in localStorage)
+        localStorage.setItem('viraaChatLanguage', currentLanguage);
+        displayCategories(); // Re-render categories with the new language
+        announceToScreenReader(`Language changed to ${languageSelector.options[languageSelector.selectedIndex].text}`);
+    });
+
+    // Initialize language from localStorage if previously set
+    const savedLanguage = localStorage.getItem('viraaChatLanguage');
+    if (savedLanguage && translations[savedLanguage]) {
+        currentLanguage = savedLanguage;
+        languageSelector.value = savedLanguage;
+    }
+
+    // Initial display
+    displayCategories();
+    console.log('Viraa Care Categorical Assistant initialized with multi-language support (POC).');
 });

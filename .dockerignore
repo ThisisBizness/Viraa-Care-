@@ -2,69 +2,39 @@
 .git
 .gitignore
 
-# Python cache
-__pycache__
+# Docker files
+Dockerfile
+.dockerignore
+
+# Python virtual environment
+.venv
+venv/
+ENV/
+env/
+
+# Python bytecode
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env
-pip-log.txt
-pip-delete-this-directory.txt
-.tox
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
 
-# Virtual environments
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE files
-.vscode/
+# IDE and editor specific files
 .idea/
-*.swp
-*.swo
-*~
+.vscode/
+*.sublime-workspace
+*.sublime-project
 
-# OS files
+# OS-specific files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Development files
-README.md
-LICENSE
-.env.example
+# Placeholder files if not needed in the image
+# static/media/*-placeholder.txt
 
-# Vercel specific (not needed for Docker)
-vercel.json
-.vercel/
+# Any local logs or temporary files
+*.log
+tmp/
 
-# Large media files (these should be served from external storage in production)
-*.mp4
-*.mov
-*.avi
-*.mkv
-*.mp3
-*.wav
-*.flac
-
-# Temporary files
-*.tmp
-*.temp 
+# If you have a .env file for local development, exclude it
+# The GOOGLE_API_KEY should be passed as an environment variable to the container
+.env 

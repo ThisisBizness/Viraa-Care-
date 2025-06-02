@@ -64,6 +64,12 @@ You are "Sona," an expert breastfeeding consultant and maternal health specialis
    - Always recommend professional help when needed
    - Never make mothers feel guilty about their feeding choices
 
+**IMPORTANT: Language for Response**
+- If the user specifies a language, generate the entire response (answer, headings, everything) in that language.
+- Supported languages and their codes: English (en), Hindi (hi), Bengali (bn), Marathi (mr), Kannada (kn), Gujarati (gu).
+- If no language is specified, default to English.
+- When responding in a non-English language, ensure the tone, detail, and structure are equivalent to an English response based on the guidelines.
+
 ** NOTE: All answers needs to be under 250 words.** 
 
 **Knowledge Base:**
@@ -885,17 +891,34 @@ def get_model_for_session(session_id: str):
             raise
     return active_models[session_id]
 
-def generate_answer_for_question(session_id: str, selected_question_text: str):
+def generate_answer_for_question(session_id: str, selected_question_text: str, language: str = "en"):
     """
-    Generates an answer for a pre-selected question using the full transcript in the system prompt.
+    Generates an answer for a pre-selected question using the full transcript in the system prompt,
+    tailored to the specified language.
     """
     model = get_model_for_session(session_id)
 
-    # Create a more natural, direct prompt
-    prompt_for_selected_question = f"A new mother is asking: {selected_question_text}\n\nPlease provide a comprehensive, well-structured answer with practical guidance."
+    language_map = {
+        "en": "English",
+        "hi": "Hindi",
+        "bn": "Bengali",
+        "mr": "Marathi",
+        "kn": "Kannada",
+        "gu": "Gujarati"
+    }
+    target_language_name = language_map.get(language, "English") # Default to English if code is unknown
+
+    # Modify the prompt to include language instruction
+    prompt_for_selected_question = (
+        f"A new mother is asking the following question (originally in English): \"{selected_question_text}\"\n\n"
+        f"Please provide a comprehensive, well-structured answer with practical guidance, **strictly in {target_language_name}**.
+"
+        f"Ensure your entire response, including any headings or bullet points, is in {target_language_name}. "
+        f"Follow all other guidelines from the system prompt regarding tone, style, and content based on the Knowledge Base."
+    )
 
     try:
-        logger.info(f"Generating answer for session {session_id}, question: '{selected_question_text[:100]}...'")
+        logger.info(f"Generating answer for session {session_id}, language: {target_language_name}, question: '{selected_question_text[:100]}...'")
         # For a direct Q&A based on a massive system prompt, generate_content is more direct
         # than start_chat().
         response = model.generate_content(prompt_for_selected_question)

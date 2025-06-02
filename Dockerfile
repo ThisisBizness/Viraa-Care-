@@ -1,41 +1,32 @@
-# Use Python 3.11 slim image for smaller size and better performance
+# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+# IMPORTANT: Set GOOGLE_API_KEY as an environment variable
+# when running the container, or use Google Cloud Secret Manager.
+# Example: docker run -e GOOGLE_API_KEY="your_actual_api_key" your_image_name
+# ENV GOOGLE_API_KEY YOUR_GOOGLE_API_KEY_HERE
 
-# Set work directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first for better caching
+# Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install any needed packages specified in requirements.txt
+# Using --no-cache-dir to reduce image size
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy the rest of the application code into the container
+# Ensure chat_logic.py is in the root of your project directory
+COPY main.py .
+COPY chat_logic.py .
+COPY static/ ./static/
 
-# Create a non-root user for security
-RUN adduser --disabled-password --gecos '' --shell /bin/bash user \
-    && chown -R user:user /app
-USER user
-
-# Expose port (Google Cloud Run uses PORT environment variable)
+# Expose port 8080, as expected by Cloud Run by default
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
-
-# Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"] 
+# Define the command to run the application, explicitly using port 8080
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"] 
